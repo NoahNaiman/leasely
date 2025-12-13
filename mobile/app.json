@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Leasely",
+    "slug": "leasely",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,6 +20,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Leasely uses the camera to scan lease pages.",
+          "photosPermission": "Leasely reads photos you choose so it can scan lease pages."
+        }
+      ]
+    ]
   }
 }
