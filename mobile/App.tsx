@@ -13,11 +13,28 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { API_URL, extractLeaseTerms, LeaseExtraction } from './src/api';
+import { API_URL, extractLeaseTerms, LeaseExtraction, LeaseTerm } from './src/api';
 
 // Long edge in pixels. Large enough to keep small lease print legible,
 // small enough to keep uploads fast.
 const MAX_EDGE = 2000;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  parties: 'Parties',
+  premises: 'Premises',
+  term_and_dates: 'Term & Dates',
+  rent: 'Rent',
+  escalations: 'Escalations',
+  security_deposit: 'Security Deposit',
+  operating_expenses: 'Operating Expenses / CAM',
+  permitted_use: 'Permitted Use',
+  maintenance_and_repairs: 'Maintenance & Repairs',
+  insurance_and_indemnity: 'Insurance & Indemnity',
+  renewal_and_options: 'Renewal & Options',
+  termination_and_default: 'Termination & Default',
+  assignment_and_subletting: 'Assignment & Subletting',
+  other: 'Other',
+};
 
 type Status = 'idle' | 'loading' | 'done' | 'error';
 
@@ -132,6 +149,7 @@ function LeaseScanner() {
           </View>
         )}
 
+        {status === 'done' && result && <Results result={result} />}
 
         {status !== 'idle' && status !== 'loading' && (
           <Pressable onPress={reset} style={styles.resetLink}>
@@ -140,6 +158,69 @@ function LeaseScanner() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function Results({ result }: { result: LeaseExtraction }) {
+  const grouped = new Map<string, LeaseTerm[]>();
+  for (const term of result.terms) {
+    const list = grouped.get(term.category) ?? [];
+    list.push(term);
+    grouped.set(term.category, list);
+  }
+  const orderedCategories = Object.keys(CATEGORY_LABELS).filter((c) => grouped.has(c));
+
+  return (
+    <View>
+      {!result.is_lease_document && (
+        <View style={[styles.card, styles.warnCard]}>
+          <Text style={styles.warnText}>This doesn’t look like a lease page.</Text>
+        </View>
+      )}
+
+      <View style={styles.card}>
+        <Text style={styles.sectionLabel}>Page summary</Text>
+        <Text style={styles.body}>{result.page_summary}</Text>
+      </View>
+
+      {result.warnings.length > 0 && (
+        <View style={[styles.card, styles.warnCard]}>
+          {result.warnings.map((w, i) => (
+            <Text key={i} style={styles.warnText}>
+              ⚠︎ {w}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      {result.terms.length === 0 && (
+        <Text style={[styles.muted, { textAlign: 'center' }]}>No terms found on this page.</Text>
+      )}
+
+      {orderedCategories.map((category) => (
+        <View key={category} style={styles.card}>
+          <Text style={styles.sectionLabel}>{CATEGORY_LABELS[category]}</Text>
+          {grouped.get(category)!.map((term, i) => (
+            <TermRow key={i} term={term} />
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function TermRow({ term }: { term: LeaseTerm }) {
+  const [showSource, setShowSource] = useState(false);
+  return (
+    <Pressable onPress={() => setShowSource((s) => !s)} style={styles.term}>
+      <Text style={styles.termLabel}>{term.label}</Text>
+      <Text style={styles.body}>{term.value}</Text>
+      {showSource ? (
+        <Text style={styles.source}>“{term.source_text}”</Text>
+      ) : (
+        <Text style={styles.link}>Show source text</Text>
+      )}
+    </Pressable>
   );
 }
 
